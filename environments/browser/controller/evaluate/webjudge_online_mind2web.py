@@ -483,7 +483,7 @@ Note: Screenshot analysis scored {main_score}/5, below threshold of {score_thres
         logging.info(f"WebJudge evaluation result: {status}")
 
         return EvaluationResult(
-                reward=main_score/5.0,
+                reward=1. if success == "success" else 0.,
                 done=True,
                 content=final_result,
                 info={"task_description": task_text, "status": status, "thoughts": thoughts}

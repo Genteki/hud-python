@@ -41,11 +41,6 @@ class AnthropicComputerToolWithRecord(AnthropicComputerTool):
             description=description,
             **kwargs,
         )
-        self.screenshot_history = []
-        self._callbacks: dict[
-            str,
-            list[Callable[..., Awaitable[Any]]],
-        ] = {}  # DELETE after hud-python version bump
         self.add_callback("on_screenshot_action", self._on_screenshot_action)
         self.add_callback("on_recorded_action", self._on_recorded_action)
         
@@ -238,35 +233,3 @@ class AnthropicComputerToolWithRecord(AnthropicComputerTool):
             action_part = action_name
 
         return f"{element_part} -> {action_part}"
-    
-    # Delete After hud-python version bump
-    def add_callback(self, event_type: str, callback: Callable[..., Awaitable[Any]]):
-        """Register a callback function for specific event
-        
-        Args:
-            event_type: (Required) Specific event name to trigger callback
-                        e.g. "after_click", "before_navigate"
-            callback: (Required) Async function to call. Must be defined by `async def f(...)`
-        """
-        if event_type not in self._callbacks:
-            self._callbacks[event_type] = []
-        self._callbacks[event_type].append(callback)
-
-    def remove_callback(self, event_type: str, callback: Callable[..., Awaitable[Any]]):
-        """Remove a registered callback
-        Args:
-            event_type: (Required) Specific event name to trigger callback
-                        e.g. "after_click", "before_navigate"
-            callback: (Required) Function to remove from callback list.
-        """
-        if (event_type in self._callbacks) and (callback in self._callbacks[event_type]):
-            self._callbacks[event_type].remove(callback)
-    
-    async def _trigger_callbacks(self, event_type: str, **kwargs):
-        """Trigger all registered callback functions of an event type"""
-        callback_list = self._callbacks.get(event_type, [])
-        for callback in callback_list:
-            try:
-                await callback(**kwargs)
-            except Exception as e:
-                logger.warning(f"Callback failed for {event_type}: {e}")

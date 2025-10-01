@@ -58,19 +58,8 @@ class OpenAIComputerToolWithRecord(OpenAIComputerTool):
             description=description or "Control computer with mouse, keyboard, and screenshots",
             **kwargs,
         )
-        self.screenshot_history = []
-        self._callbacks: dict[
-            str,
-            list[Callable[..., Awaitable[Any]]],
-        ] = {}  # DELETE after hud-python version bump
-
-        
-        # Try to add callback if available
-        if hasattr(self, 'add_callback'):
-            logger.info("Callback system available, adding screenshot callback")
-            self.add_callback("on_screenshot_action", self._on_screenshot_action)
-        else:
-            logger.error("Callback system not available - missing add_callback method")
+        self.add_callback("on_screenshot_action", self._on_screenshot_action)
+        self.add_callback("on_recorded_action", self._on_recorded_action)
         
     async def _on_screenshot_action(self, **kwargs) -> None:
         """Callback function to take and save screenshots to /screenshot directory"""
@@ -108,6 +97,93 @@ class OpenAIComputerToolWithRecord(OpenAIComputerTool):
         except Exception as e:
             logger.debug(f"Screenshot callback failed (this is normal during initialization): {e}")
             # Don't log as error since this is expected during initialization
+
+    async def _on_recorded_action(self, type=None, x=None, y=None, text=None,
+                                  path=None, scroll_x=None, scroll_y=None, **_):
+        """Record action in unified representation format
+
+        Creates unified action representations like:
+        - <coordinate=[123, 456]> -> CLICK
+        - <coordinate=[123, 456]> -> TYPE hello@example.com
+        - <start=[100, 200], end=[300, 400]> -> DRAG
+        """
+        if not type:
+            return
+
+        try:
+            # Create unified action representation
+            action_repr = self._to_action_repr(
+                type, x, y, text, path, scroll_x, scroll_y
+            )
+
+            # Dump to file
+            action_history_dir = "/action_history"
+            os.makedirs(action_history_dir, exist_ok=True)
+            action_file = os.path.join(action_history_dir, "action_history.txt")
+
+            with open(action_file, "a", encoding="utf-8") as f:
+                f.write(f"{action_repr}\n")
+
+            logger.info(f"Recorded action: {action_repr}")
+
+        except Exception as e:
+            logger.warning(f"Failed to record action: {e}")
+
+    def _to_action_repr(self, type, x=None, y=None, text=None,
+                        path=None, scroll_x=None, scroll_y=None):
+        """Create unified action representation following AgentRewardBench format
+
+        Format examples:
+        - <coordinate=[123, 456]> -> CLICK
+        - <coordinate=[123, 456]> -> TYPE hello@example.com
+        - <start=[100, 200], end=[300, 400]> -> DRAG
+        - <coordinate=[123, 456], direction=up, amount=3> -> SCROLL
+        """
+
+        # Normalize action names to uppercase
+        action_name = type.upper().replace("_", "")
+        if action_name == "DOUBLECLICK":
+            action_name = "DOUBLECLICK"
+        elif action_name == "KEYPRESS":
+            action_name = "KEY"
+
+        # Build element attributes part
+        attributes = []
+
+        if x is not None and y is not None:
+            attributes.append(f"coordinate=[{x}, {y}]")
+
+        if path and action_name == "DRAG":
+            if len(path) >= 2:
+                start = path[0]
+                end = path[-1]
+                attributes.append(f"start=[{start['x']}, {start['y']}]")
+                attributes.append(f"end=[{end['x']}, {end['y']}]")
+
+        if scroll_x is not None or scroll_y is not None:
+            if scroll_y and scroll_y > 0:
+                attributes.append("direction=down")
+                attributes.append(f"amount={abs(scroll_y)}")
+            elif scroll_y and scroll_y < 0:
+                attributes.append("direction=up")
+                attributes.append(f"amount={abs(scroll_y)}")
+            elif scroll_x and scroll_x > 0:
+                attributes.append("direction=right")
+                attributes.append(f"amount={abs(scroll_x)}")
+            elif scroll_x and scroll_x < 0:
+                attributes.append("direction=left")
+                attributes.append(f"amount={abs(scroll_x)}")
+
+        # Create element part
+        element_part = f"<{', '.join(attributes)}>" if attributes else "<>"
+
+        # Create action part
+        if text and action_name in ["TYPE", "KEY"]:
+            action_part = f"{action_name} {text}"
+        else:
+            action_part = action_name
+
+        return f"{element_part} -> {action_part}"
 
     async def __call__(
         self,
@@ -158,36 +234,26 @@ class OpenAIComputerToolWithRecord(OpenAIComputerTool):
                 await self._trigger_callbacks("on_screenshot_action")
             else:
                 logger.warning("_trigger_callbacks method not available")
+
+        recorded_actions = {
+            "click",
+            "double_click",
+            "type",
+            "keypress",
+            "scroll",
+            "drag",
+        }
+        if type in recorded_actions:
+            logger.info("debug record actions")
+            await self._trigger_callbacks(
+                "on_recorded_action",
+                type=type,
+                x=x,
+                y=y,
+                text=text,
+                path=path,
+                scroll_x=scroll_x,
+                scroll_y=scroll_y
+            )
+
         return result
-
-    # Delete After hud-python version bump
-    def add_callback(self, event_type: str, callback: Callable[..., Awaitable[Any]]):
-        """Register a callback function for specific event
-        
-        Args:
-            event_type: (Required) Specific event name to trigger callback
-                        e.g. "after_click", "before_navigate"
-            callback: (Required) Async function to call. Must be defined by `async def f(...)`
-        """
-        if event_type not in self._callbacks:
-            self._callbacks[event_type] = []
-        self._callbacks[event_type].append(callback)
-
-    def remove_callback(self, event_type: str, callback: Callable[..., Awaitable[Any]]):
-        """Remove a registered callback
-        Args:
-            event_type: (Required) Specific event name to trigger callback
-                        e.g. "after_click", "before_navigate"
-            callback: (Required) Function to remove from callback list.
-        """
-        if (event_type in self._callbacks) and (callback in self._callbacks[event_type]):
-            self._callbacks[event_type].remove(callback)
-    
-    async def _trigger_callbacks(self, event_type: str, **kwargs):
-        """Trigger all registered callback functions of an event type"""
-        callback_list = self._callbacks.get(event_type, [])
-        for callback in callback_list:
-            try:
-                await callback(**kwargs)
-            except Exception as e:
-                logger.warning(f"Callback failed for {event_type}: {e}")

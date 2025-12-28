@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .base import MCPAgent
+from .loop import multi_turn_run
 from .openai import OpenAIAgent
 from .openai_chat import OpenAIChatAgent
 from .operator import OperatorAgent
@@ -16,4 +17,5 @@ __all__ = [
     "OpenAIAgent",
     "OpenAIChatAgent",
     "OperatorAgent",
+    "multi_turn_run",
 ]

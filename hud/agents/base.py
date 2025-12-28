@@ -354,6 +354,13 @@ class MCPAgent(ABC):
 
         return trace_result
 
+    async def _run_context_multi_turn(
+        self, context: list[types.ContentBlock], user,* , max_steps: int = 10
+    ) -> Trace:
+        
+        trace_result = Trace()
+        return trace_result
+
     async def call_tools(
         self, tool_call: MCPToolCall | list[MCPToolCall] | None = None
     ) -> list[MCPToolResult]:

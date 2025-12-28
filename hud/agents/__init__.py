@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .base import MCPAgent
+from .loop import multi_turn_run
 from .openai import OpenAIAgent
 from .openai_chat import OpenAIChatAgent
 from .operator import OperatorAgent
@@ -13,6 +14,7 @@ __all__ = [
     "OpenAIChatAgent",
     "OperatorAgent",
     "create_agent",
+    "multi_turn_run",
 ]
 
 

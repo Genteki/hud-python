@@ -31,7 +31,8 @@ class AgentType(str, Enum):
 
     @property
     def cls(self) -> type:
-        from hud.agents import OpenAIAgent, OperatorAgent
+        from hud.agents import OpenAIAgent
+        from hud.agents.operator_agent import OperatorAgent
         from hud.agents.claude import ClaudeAgent
         from hud.agents.gemini import GeminiAgent
         from hud.agents.gemini_cua import GeminiCUAAgent

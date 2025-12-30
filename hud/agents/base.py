@@ -715,9 +715,10 @@ async def _run_conversation_loop(
         Uses tau2-bench's UserSimulator directly.
         """
         try:
+            from datetime import datetime
+
             from server.state import get_tau2_task
             from server.tools.conversation import ConversationTool, execute_user_tool_via_http
-            from datetime import datetime
             from tau2.data_model.message import AssistantMessage, MultiToolMessage
 
             # Get tau2 task state

@@ -10,7 +10,7 @@ from mcp import types
 from openai import AsyncOpenAI
 from openai.types.responses.response_computer_tool_call import PendingSafetyCheck
 
-from hud.agents.operator import OperatorAgent
+from hud.agents.operator_agent import OperatorAgent
 from hud.environment.router import ToolRouter
 from hud.eval.context import EvalContext
 from hud.types import MCPToolCall, MCPToolResult

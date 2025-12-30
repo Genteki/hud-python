@@ -3,7 +3,7 @@ from __future__ import annotations
 from .base import MCPAgent
 from .openai import OpenAIAgent
 from .openai_chat import OpenAIChatAgent
-from .operator import OperatorAgent
+from .operator_agent import OperatorAgent
 
 # Note: These agents are not exported here to avoid requiring optional dependencies.
 # Import directly if needed:

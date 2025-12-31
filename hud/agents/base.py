@@ -229,7 +229,12 @@ class MCPAgent(ABC):
             try:
                 # Check if tau2-bench modules are available
                 from server.state import get_tau2_task
-                from server.tools.conversation import ConversationTool
+                from server.tools.conversation import (
+                    execute_user_tool_via_http,
+                    get_user_simulator,
+                    get_user_state,
+                    set_user_state,
+                )
 
                 # If we got here, tau2 modules are available - use conversation loop
                 logger.info("Using tau2-bench multi-turn conversation loop")
@@ -734,10 +739,12 @@ async def _run_conversation_loop(
             tau2_task.add_message(agent_msg)
 
             # Generate initial user response using tau2-bench's UserSimulator
-            user_message, new_state = ConversationTool._user_simulator.generate_next_message(
-                message=agent_msg, state=ConversationTool._user_state
+            user_simulator = get_user_simulator()
+            user_state = get_user_state()
+            user_message, new_state = user_simulator.generate_next_message(
+                message=agent_msg, state=user_state
             )
-            ConversationTool._user_state = new_state
+            set_user_state(new_state)
             tau2_task.add_message(user_message)
 
             # Handle user tool calls (user performs actions)
@@ -754,10 +761,12 @@ async def _run_conversation_loop(
 
                 # Get next user response after tool execution
                 multi_tool_msg = MultiToolMessage(role="tool", tool_messages=tool_messages)
-                user_message, new_state = ConversationTool._user_simulator.generate_next_message(
-                    message=multi_tool_msg, state=ConversationTool._user_state
+                user_simulator = get_user_simulator()
+                user_state = get_user_state()
+                user_message, new_state = user_simulator.generate_next_message(
+                    message=multi_tool_msg, state=user_state
                 )
-                ConversationTool._user_state = new_state
+                set_user_state(new_state)
                 tau2_task.add_message(user_message)
 
             # Return user's text response

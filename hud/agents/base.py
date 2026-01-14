@@ -237,6 +237,10 @@ class MCPAgent(ABC):
             # Cleanup auto-created resources
             await self._cleanup()
 
+    async def run_multi_round(self, ctx: EvalContext, simulated_user: MCPAgent, max_steps=10) -> Trace:
+        from hud.agents.loop.multi_turn_loop import multi_turn_run
+        return await multi_turn_run(ctx, self,simulated_user, max_steps)
+
     async def _run_context(
         self, context: list[types.ContentBlock], *, max_steps: int = 10
     ) -> Trace:
@@ -594,3 +598,4 @@ def find_content(result: MCPToolResult) -> str | None:
                 except json.JSONDecodeError:
                     pass
     return ""
+
